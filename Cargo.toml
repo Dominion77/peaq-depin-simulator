@@ -1,0 +1,36 @@
+[package]
+name = "peaq-depin-simulator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Substrate & subxt core
+subxt = "0.50"
+subxt-signer = "0.50"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Cryptography
+sp-core = "34.0"
+sp-keyring = "39.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+hex = "0.4"
+rand = "0.8"
+
+[dev-dependencies]
+mockito = "1.5"
+tokio-test = "0.4"
