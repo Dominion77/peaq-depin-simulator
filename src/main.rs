@@ -10,6 +10,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let _ = dotenvy::dotenv();
+    
     // Initialize logging
     tracing_subscriber::registry()
         .with(
@@ -36,6 +38,7 @@ async fn main() -> Result<()> {
     };
     
     info!("Device public key: {}", keypair.public_key_hex());
+    info!("Device SS58 address: {}", keypair.ss58_address());
 
     // Create DID
     let did = Did::from_public_key(&keypair.public_key_hex())?;
@@ -56,7 +59,7 @@ async fn main() -> Result<()> {
     }
 
     // Check if DID exists, register if not
-    match client.did_exists(did.as_str()).await {
+    match client.did_exists(&keypair).await {
         Ok(exists) => {
             if !exists {
                 info!("DID not found on-chain, registering...");

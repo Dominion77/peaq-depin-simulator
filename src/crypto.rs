@@ -1,4 +1,4 @@
-use sp_core::{crypto::Pair as PairTrait, sr25519::Pair};
+use sp_core::{crypto::Pair as PairTrait, sr25519::Pair, crypto::Ss58Codec};
 use crate::{Result, SimulatorError};
 
 /// Cryptographic keypair manager for device identity
@@ -24,6 +24,12 @@ impl DeviceKeypair {
     /// Get the public key as hex string
     pub fn public_key_hex(&self) -> String {
         format!("0x{}", hex::encode(self.pair.public().as_ref() as &[u8]))
+    }
+
+    /// Get the SS58 address for peaq network (SS58 prefix 42 for generic Substrate)
+    /// Peaq uses prefix 42 (generic Substrate address format)
+    pub fn ss58_address(&self) -> String {
+        self.pair.public().to_ss58check_with_version(42u16.into())
     }
 
     /// Get the underlying pair for signing
@@ -57,6 +63,7 @@ impl std::fmt::Debug for DeviceKeypair {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DeviceKeypair")
             .field("public_key", &self.public_key_hex())
+            .field("ss58_address", &self.ss58_address())
             .finish()
     }
 }

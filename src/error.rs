@@ -5,6 +5,9 @@ pub enum SimulatorError {
     #[error("Subxt error: {0}")]
     Subxt(#[from] subxt::Error),
 
+    #[error("Subxt block error: {0}")]
+    SubxtBlock(#[from] subxt::error::OnlineClientAtBlockError),
+
     #[error("Cryptographic error: {0}")]
     Crypto(String),
 

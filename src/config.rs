@@ -22,7 +22,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            rpc_url: "wss://wsspc-akash-agung.peaq.network".to_string(),
+            rpc_url: "wss://wss-async-agung.peaq.xyz".to_string(),
             telemetry_interval_secs: 10,
             device_id: "sim-001".to_string(),
             seed_phrase: None,
