@@ -38,7 +38,8 @@ async fn main() -> Result<()> {
     };
     
     info!("Device public key: {}", keypair.public_key_hex());
-    info!("Device SS58 address: {}", keypair.ss58_address());
+    info!("Device EVM address (MetaMask): {}", keypair.evm_address());
+    info!("Device SS58 address (Substrate): {}", keypair.ss58_address());
 
     // Create DID
     let did = Did::from_public_key(&keypair.public_key_hex())?;
