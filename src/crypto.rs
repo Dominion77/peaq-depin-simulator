@@ -1,4 +1,4 @@
-use sp_core::{crypto::Pair as PairTrait, sr25519::Pair, crypto::Ss58Codec};
+use sp_core::{crypto::Pair as PairTrait, sr25519::Pair, crypto::Ss58Codec, H160, blake2_256};
 use crate::{Result, SimulatorError};
 
 /// Cryptographic keypair manager for device identity
@@ -30,6 +30,16 @@ impl DeviceKeypair {
     /// Peaq uses prefix 42 (generic Substrate address format)
     pub fn ss58_address(&self) -> String {
         self.pair.public().to_ss58check_with_version(42u16.into())
+    }
+
+    /// Get the EVM H160 address (Ethereum-style 0x address)
+    /// This is derived from the Substrate public key using blake2_256 hash
+    pub fn evm_address(&self) -> String {
+        let public_key = self.pair.public().0;
+        // Hash the public key with blake2_256 and take the last 20 bytes
+        let hash = blake2_256(&public_key);
+        let h160 = H160::from_slice(&hash[12..32]);
+        format!("0x{}", hex::encode(h160.as_bytes()))
     }
 
     /// Get the underlying pair for signing
@@ -94,4 +104,29 @@ mod tests {
         assert!(keypair.verify(data, &signature));
         assert!(!keypair.verify(b"wrong data", &signature));
     }
+
+    #[test]
+    fn test_peaq_simulator_seed_derivation() {
+        // This test verifies that our seed produces the expected address
+        let seed = "//PeaqSimulator001";
+        let keypair = DeviceKeypair::from_seed(seed).unwrap();
+        
+        let public_key = keypair.public_key_hex();
+        let ss58_address = keypair.ss58_address();
+        let evm_address = keypair.evm_address();
+        
+        println!("\n=== PeaqSimulator001 Keypair ===");
+        println!("Seed: {}", seed);
+        println!("Public key: {}", public_key);
+        println!("SS58 address (prefix 42): {}", ss58_address);
+        println!("EVM address: {}", evm_address);
+        
+        // Expected values based on the seed
+        assert_eq!(public_key, "0x226f20861c7203eb191f2105dae5118a2fb54acc4bec47a2d0e83140a2fab81f");
+        assert_eq!(ss58_address, "5CqrVmifXhjuyfDJvxCt8DyEKj7VTZd4QiapRtn8ZEjfDr9d");
+        assert_eq!(evm_address, "0xc3b1a33f0cf1fd7ee77bab1a88aa2cdf1c7aef15");
+        
+        println!(" All addresses match expected values!");
+    }
 }
+

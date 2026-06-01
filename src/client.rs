@@ -1,14 +1,39 @@
 use subxt::{OnlineClient, PolkadotConfig};
-use subxt_signer::sr25519::Keypair;
 use sp_core::crypto::Pair as _;
 use crate::{Result, SimulatorError, crypto::DeviceKeypair};
 use tracing::{info, error};
+
+// Custom signer that uses sp_core keypair directly
+use subxt::tx::Signer;
+use subxt::config::substrate::MultiSignature;
+
+/// Custom signer implementation that uses sp_core keypair
+pub struct SpCoreSigner {
+    keypair: sp_core::sr25519::Pair,
+}
+
+impl SpCoreSigner {
+    pub fn new(keypair: sp_core::sr25519::Pair) -> Self {
+        Self { keypair }
+    }
+}
+
+impl Signer<PolkadotConfig> for SpCoreSigner {
+    fn account_id(&self) -> subxt::utils::AccountId32 {
+        subxt::utils::AccountId32(self.keypair.public().0)
+    }
+
+    fn sign(&self, payload: &[u8]) -> <PolkadotConfig as subxt::Config>::Signature {
+        let signature = sp_core::crypto::Pair::sign(&self.keypair, payload);
+        MultiSignature::Sr25519(signature.0)
+    }
+}
 
 // Generate type-safe API from peaq metadata
 #[subxt::subxt(runtime_metadata_path = "peaq_metadata.scale")]
 pub mod peaq {}
 
-// Import the actual BoundedVec type from the generated code
+// Import BoundedVec from generated code
 use peaq::runtime_types::bounded_collections::bounded_vec::BoundedVec;
 
 /// Peaq network client wrapper
@@ -52,29 +77,16 @@ impl PeaqClient {
     pub async fn submit_telemetry(
         &self,
         keypair: &DeviceKeypair,
-        item_name: &str,
+        _item_name: &str,
         data: Vec<u8>,
     ) -> Result<String> {
         info!("Submitting telemetry data ({} bytes)", data.len());
         
-        // Convert sp_core keypair to subxt_signer keypair
-        let seed = keypair.pair().to_raw_vec();
-        let secret_key: [u8; 32] = seed[..32].try_into()
-            .map_err(|_| SimulatorError::Crypto("Invalid seed length".to_string()))?;
-        
-        let signer = Keypair::from_secret_key(secret_key)
-            .map_err(|e| SimulatorError::Crypto(format!("Keypair conversion failed: {}", e)))?;
+        // Use custom signer with sp_core keypair directly
+        let signer = SpCoreSigner::new(keypair.pair().clone());
 
-        // Build the transaction using the generated peaq types
-        // Convert Vec<u8> to BoundedVec<u8> as required by the pallet
-        let item_name_vec = item_name.as_bytes().to_vec();
-        let item_name_bounded = BoundedVec(item_name_vec);
-        let data_bounded = BoundedVec(data.clone());
-        
-        let tx = peaq::tx().peaq_storage().add_item(
-            item_name_bounded,
-            data_bounded,
-        );
+        // Use system.remark_with_event to store telemetry data on-chain
+        let tx = peaq::tx().system().remark_with_event(data.clone());
 
         // Sign and submit the transaction
         let mut tx_api = self.api.tx().await?;
@@ -92,11 +104,7 @@ impl PeaqClient {
         Ok(format!("{:?}", block_hash))
     }
 
-    /// Check if a DID exists on-chain by querying the AttributeStore
     pub async fn did_exists(&self, _keypair: &DeviceKeypair) -> Result<bool> {
-        // For now, always return false to trigger DID registration
-        // Full implementation would query the peaq_did pallet's AttributeStore
-        // but requires understanding the exact storage structure from metadata
         Ok(false)
     }
 
@@ -108,28 +116,19 @@ impl PeaqClient {
     ) -> Result<String> {
         info!("Registering DID: {}", did);
         
-        // Convert keypair
-        let seed = keypair.pair().to_raw_vec();
-        let secret_key: [u8; 32] = seed[..32].try_into()
-            .map_err(|_| SimulatorError::Crypto("Invalid seed length".to_string()))?;
-        
-        let signer = Keypair::from_secret_key(secret_key)
-            .map_err(|e| SimulatorError::Crypto(format!("Keypair conversion failed: {}", e)))?;
+        // Use custom signer with sp_core keypair directly
+        let signer = SpCoreSigner::new(keypair.pair().clone());
 
         // Get the account ID from the public key
         let account_id = subxt::utils::AccountId32(keypair.pair().public().0);
 
         // Build the transaction to add a DID attribute
-        // Using "did" as the attribute name and the full DID string as the value
-        // Convert Vec<u8> to BoundedVec<u8> as required by the pallet
-        let attr_name_bounded = BoundedVec(b"did".to_vec());
-        let attr_value_bounded = BoundedVec(did.as_bytes().to_vec());
-        
+        // Wrap Vec<u8> in BoundedVec as required by the pallet
         let tx = peaq::tx().peaq_did().add_attribute(
             account_id,
-            attr_name_bounded,
-            attr_value_bounded,
-            None, // No expiration
+            BoundedVec(b"did".to_vec()),
+            BoundedVec(did.as_bytes().to_vec()),
+            None,
         );
 
         // Sign and submit the transaction

@@ -420,7 +420,3 @@ The simulator is **structurally complete** and ready for production use once the
 - **Tests**: Run `cargo test` to verify installation
 
 ---
-
-**Built with ❤️ for the DePIN ecosystem**
-
-*Project completed as specified: ~850 lines of production Rust code implementing a headless DePIN node simulator for the peaq network.*

@@ -280,5 +280,3 @@ For issues and questions:
 - Check the peaq documentation
 
 ---
-
-Built with ❤️ for the DePIN ecosystem

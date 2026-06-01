@@ -60,16 +60,24 @@ async fn main() -> Result<()> {
     }
 
     // Check if DID exists, register if not
+    // Note: did_exists always returns false, so we rely on registration error handling
     match client.did_exists(&keypair).await {
         Ok(exists) => {
             if !exists {
-                info!("DID not found on-chain, registering...");
+                info!("Registering DID...");
                 match client.register_did(&keypair, did.as_str()).await {
-                    Ok(hash) => info!("DID registered with hash: {}", hash),
-                    Err(e) => warn!("DID registration failed: {}", e),
+                    Ok(hash) => info!("✅ DID registered successfully: {}", hash),
+                    Err(e) => {
+                        // Check if it's the "already exists" error
+                        if e.to_string().contains("AttributeAlreadyExist") {
+                            info!("✅ DID already registered on-chain");
+                        } else {
+                            warn!("DID registration failed: {}", e);
+                        }
+                    }
                 }
             } else {
-                info!("DID already exists on-chain");
+                info!("✅ DID already registered on-chain");
             }
         }
         Err(e) => warn!("Could not check DID existence: {}", e),
