@@ -17,12 +17,13 @@ authors = ["peaq DePIN Simulator Contributors"]
 keywords = ["peaq", "depin", "substrate", "iot", "blockchain"]
 categories = ["simulation", "cryptography", "network-programming", "command-line-utilities"]
 
-exclude = [
-    ".env",
+include = [
+    "src/**/*",
+    "examples/**/*",
     "peaq_metadata.scale",
-    "*.json",
-    "scripts/",
-    "target/",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE",
 ]
 
 [dependencies]
