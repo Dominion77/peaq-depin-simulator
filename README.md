@@ -1,282 +1,337 @@
 # peaq DePIN Node Simulator
 
-A production-grade headless DePIN (Decentralized Physical Infrastructure Network) node simulator for the peaq network, written in Rust.
+[![Crates.io](https://img.shields.io/crates/v/peaq-depin-simulator.svg)](https://crates.io/crates/peaq-depin-simulator)
+[![docs.rs](https://img.shields.io/docsrs/peaq-depin-simulator)](https://docs.rs/peaq-depin-simulator)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 
-## Overview
+A production-grade, headless **DePIN** (Decentralized Physical Infrastructure Network) node simulator for the [peaq network](https://www.peaq.network/), written in Rust.
 
-This simulator generates a peaq DID (Decentralized Identity), creates cryptographic keypairs, and simulates IoT data streams (energy consumption, GPS coordinates, environmental sensors, vehicle telemetry). Each data packet is cryptographically signed and submitted to the peaq network via Substrate extrinsics.
+The simulator generates a peaq DID, manages an SR25519 cryptographic keypair, produces realistic IoT telemetry (energy, location, environment, vehicle), cryptographically signs every packet, and anchors it to the peaq chain via Substrate extrinsics — all without any UI.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+  - [As a binary (CLI tool)](#as-a-binary-cli-tool)
+  - [As a library](#as-a-library)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Usage](#usage)
+  - [Binary usage](#binary-usage)
+  - [Library usage](#library-usage)
+- [Telemetry Types](#telemetry-types)
+- [Architecture](#architecture)
+- [Testing](#testing)
+- [Security](#security)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## Features
 
-- **Cryptographic Identity Management**: SR25519 keypair generation and management
-- **DID Support**: W3C-compliant Decentralized Identifiers
-- **Multi-Sensor Simulation**: Energy, location, environmental, and vehicle telemetry
-- **Cryptographic Signing**: All data packets are signed and verifiable
-- **Substrate Integration**: Direct interaction with peaq network via subxt
-- **Async Architecture**: Built on Tokio for high-performance async I/O
-- **Comprehensive Testing**: Unit tests for all core modules
-- **Production-Ready**: Proper error handling, logging, and configuration
+- 🔑 **SR25519 Identity** — keypair generation (random or from a seed phrase)
+- 🪪 **W3C-compliant DIDs** — `did:peaq:0x…` identifiers registered on-chain
+- 📡 **Multi-sensor simulation** — energy, GPS, environmental, and vehicle telemetry
+- ✍️ **Cryptographic signing** — every packet is signed with Ed25519 and self-verified
+- ⛓️ **Substrate integration** — direct on-chain submission via [subxt](https://docs.rs/subxt/)
+- ⚡ **Async-first** — built on [Tokio](https://tokio.rs/) for non-blocking I/O
+- 🛡️ **No hardcoded secrets** — all sensitive data via environment variables / `.env`
+- 🧪 **Unit-tested core modules**
 
-## Architecture
-
-### Module Structure
-
-```
-src/
-├── main.rs           # Application entry point and main loop
-├── lib.rs            # Library exports
-├── config.rs         # Configuration management
-├── crypto.rs         # Cryptographic keypair operations
-├── did.rs            # Decentralized Identity management
-├── telemetry.rs      # IoT data generation and signing
-├── client.rs         # Peaq network client wrapper
-└── error.rs          # Error types and handling
-```
-
-### Data Flow
-
-```
-┌─────────────────┐
-│  Device Keypair │
-│   (SR25519)     │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   DID Creation  │
-│ did:peaq:0x...  │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐      ┌──────────────┐
-│   Telemetry     │─────▶│  Signature   │
-│   Generator     │      │  (Ed25519)   │
-└────────┬────────┘      └──────┬───────┘
-         │                      │
-         └──────────┬───────────┘
-                    ▼
-         ┌─────────────────────┐
-         │  Peaq Network       │
-         │  (Substrate RPC)    │
-         └─────────────────────┘
-```
-
-## Prerequisites
-
-- Rust 1.70+ (2021 edition)
-- Access to peaq network (testnet or mainnet)
-- Basic understanding of Substrate and Polkadot ecosystem
+---
 
 ## Installation
 
+### As a binary (CLI tool)
+
+Requires **Rust 1.70+**. Install via Cargo:
+
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd peaq-depin-simulator
-
-# Build the project
-cargo build --release
-
-# Run tests
-cargo test
+cargo install peaq-depin-simulator
 ```
+
+This compiles and places the `peaq-depin-simulator` binary in `~/.cargo/bin/`.
+
+#### Or build from source
+
+```bash
+git clone https://github.com/Dominion77/peaq-depin-simulator
+cd peaq-depin-simulator
+cargo build --release
+# Binary is at: ./target/release/peaq-depin-simulator
+```
+
+### As a library
+
+Add the crate to your `Cargo.toml`:
+
+```toml
+[dependencies]
+peaq-depin-simulator = "0.1"
+```
+
+---
+
+## Quick Start
+
+1. **Install** the binary (see above).
+
+2. **Create a `.env` file** in your working directory (or export variables directly):
+
+   ```env
+   PEAQ_RPC_URL=wss://wss-async-agung.peaq.xyz
+   DEVICE_ID=my-device-001
+   TELEMETRY_INTERVAL=10
+   # Optional — omit to generate a fresh random keypair each run
+   # SEED_PHRASE=//Alice
+   ```
+
+3. **Run** the simulator:
+
+   ```bash
+   peaq-depin-simulator
+   ```
+
+   You should see output like:
+
+   ```
+   INFO peaq_depin_simulator: Starting peaq DePIN Node Simulator
+   INFO peaq_depin_simulator: Device DID: did:peaq:0x226f20861c…
+   INFO peaq_depin_simulator: Connected to peaq network at wss://wss-async-agung.peaq.xyz
+   INFO peaq_depin_simulator: ✅ DID registered successfully
+   INFO peaq_depin_simulator: 📸 Generated telemetry packet #1: Vehicle { speed_kmh: 37.1, … }
+   INFO peaq_depin_simulator: 🧱 Telemetry anchored to peaq network
+   ```
+
+---
 
 ## Configuration
 
-The simulator can be configured via environment variables:
+All configuration is via **environment variables** (a `.env` file is also supported via [dotenvy](https://docs.rs/dotenvy/)):
 
-```bash
-# Peaq network RPC endpoint
-export PEAQ_RPC_URL="wss://wsspc-akash-agung.peaq.network"
+| Variable | Default | Description |
+|---|---|---|
+| `PEAQ_RPC_URL` | `wss://wss-async-agung.peaq.xyz` | peaq node WebSocket RPC endpoint |
+| `DEVICE_ID` | `peaq-simulator` | Logical name for this simulated device |
+| `TELEMETRY_INTERVAL` | `10` | Seconds between telemetry submissions |
+| `SEED_PHRASE` | *(none — random keypair)* | BIP-39 mnemonic or dev path (e.g. `//Alice`) for a deterministic identity |
+| `STORAGE_ITEM_NAME` | `telemetry` | peaq storage item key used when anchoring data |
+| `RUST_LOG` | `peaq_depin_simulator=info` | Standard `tracing` log filter |
 
-# Telemetry submission interval (seconds)
-export TELEMETRY_INTERVAL=10
+### Example `.env`
 
-# Device identifier
-export DEVICE_ID="sim-001"
-
-# Optional: Seed phrase for deterministic keypair
-export SEED_PHRASE="//Alice"
+```env
+PEAQ_RPC_URL=wss://wss-async-agung.peaq.xyz
+DEVICE_ID=truck-042
+TELEMETRY_INTERVAL=5
+SEED_PHRASE=word1 word2 word3 ... word12
+RUST_LOG=peaq_depin_simulator=debug
 ```
+
+---
 
 ## Usage
 
-### Basic Usage
+### Binary usage
 
 ```bash
-# Run with default configuration
-cargo run --release
+# Run with defaults (reads .env if present)
+peaq-depin-simulator
 
-# Run with custom configuration
-DEVICE_ID="my-device" TELEMETRY_INTERVAL=5 cargo run --release
+# Override any variable inline
+DEVICE_ID="sensor-7" TELEMETRY_INTERVAL=30 peaq-depin-simulator
 
-# Run with debug logging
-RUST_LOG=debug cargo run --release
+# Use a deterministic keypair (same DID across restarts)
+SEED_PHRASE="//Alice" peaq-depin-simulator
+
+# Verbose debug output
+RUST_LOG=debug peaq-depin-simulator
+
+# Connect to peaq mainnet
+PEAQ_RPC_URL=wss://wss.peaq.network peaq-depin-simulator
 ```
 
-### Using a Specific Keypair
+### Library usage
 
-```bash
-# Use a seed phrase for deterministic identity
-SEED_PHRASE="//Alice" cargo run --release
-
-# Or generate a new random keypair (default)
-cargo run --release
-```
-
-## Metadata Generation (Required for Production)
-
-To interact with the peaq network's specific pallets, you need to generate the runtime metadata:
-
-```bash
-# Install subxt-cli
-cargo install subxt-cli
-
-# Download peaq metadata
-subxt metadata \
-  --url wss://wsspc-akash-agung.peaq.network \
-  --output peaq_metadata.scale
-
-# Update src/client.rs to use the metadata
-# Add this at the top of the file:
-#[subxt::subxt(runtime_metadata_path = "peaq_metadata.scale")]
-pub mod peaq_runtime {}
-```
-
-Then update the client methods to use the generated types:
+The crate exposes its core modules so you can embed the simulator in your own Rust application:
 
 ```rust
-let tx = peaq_runtime::tx()
-    .peaq_storage()
-    .add_item(item_name.as_bytes().to_vec(), data);
+use peaq_depin_simulator::{
+    Config,
+    crypto::DeviceKeypair,
+    did::Did,
+    telemetry::TelemetryGenerator,
+    client::PeaqClient,
+};
 
-let tx_progress = self.api
-    .tx()
-    .sign_and_submit_then_watch_default(&tx, &signer)
-    .await?;
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Load config from environment / .env
+    let config = Config::from_env()?;
+
+    // Generate (or restore) a cryptographic identity
+    let keypair = DeviceKeypair::generate()?;
+    println!("DID: {}", Did::from_public_key(&keypair.public_key_hex())?);
+
+    // Connect to the peaq network
+    let client = PeaqClient::connect(&config.rpc_url).await?;
+
+    // Generate, sign, and submit a telemetry packet
+    let mut gen = TelemetryGenerator::new(config.device_id.clone());
+    let mut packet = gen.generate();
+    packet.sign(&keypair)?;
+
+    let hash = client
+        .submit_telemetry(&keypair, &config.storage_item_name, packet.to_bytes()?)
+        .await?;
+
+    println!("Anchored: {hash}");
+    Ok(())
+}
 ```
+
+#### Deterministic identity (same DID across restarts)
+
+```rust
+// From a seed phrase / dev path
+let keypair = DeviceKeypair::from_seed("//Alice")?;
+
+// From a full BIP-39 mnemonic
+let keypair = DeviceKeypair::from_seed("word1 word2 ... word12")?;
+```
+
+#### Generating all telemetry types manually
+
+```rust
+use peaq_depin_simulator::telemetry::{TelemetryGenerator, TelemetryData};
+
+let mut gen = TelemetryGenerator::new("device-001".into());
+
+for _ in 0..4 {
+    let packet = gen.generate(); // cycles through Energy → Location → Environmental → Vehicle
+    println!("{:?}", packet.data);
+}
+```
+
+---
 
 ## Telemetry Types
 
-The simulator generates four types of telemetry data:
+The simulator cycles through four sensor profiles per device:
 
-### 1. Energy Telemetry
-```json
-{
-  "type": "Energy",
-  "consumption_kwh": 24.5,
-  "voltage": 230.2,
-  "current_amps": 12.3
-}
+| Type | Fields |
+|---|---|
+| **Energy** | `consumption_kwh`, `voltage`, `current_amps` |
+| **Location** | `latitude`, `longitude`, `altitude_meters` |
+| **Environmental** | `temperature_celsius`, `humidity_percent`, `pressure_hpa` |
+| **Vehicle** | `speed_kmh`, `battery_percent`, `odometer_km` |
+
+Each packet is serialised to JSON, signed with Ed25519, and submitted as a peaq storage item.
+
+---
+
+## Architecture
+
+```
+src/
+├── main.rs        — CLI entry point and main telemetry loop
+├── lib.rs         — Public library surface
+├── config.rs      — Environment-based configuration
+├── crypto.rs      — SR25519 keypair generation & signing
+├── did.rs         — W3C DID creation and document generation
+├── telemetry.rs   — IoT data generation, signing, serialisation
+├── client.rs      — peaq network client (subxt wrapper)
+└── error.rs       — Unified error types
 ```
 
-### 2. Location Telemetry
-```json
-{
-  "type": "Location",
-  "latitude": 52.5200,
-  "longitude": 13.4050,
-  "altitude_meters": 34.5
-}
+**Data flow:**
+
+```
+SR25519 Keypair ──► DID (did:peaq:0x…)
+        │
+        ▼
+TelemetryGenerator ──► sign(Ed25519) ──► serialize(JSON)
+                                               │
+                                               ▼
+                                    PeaqClient.submit_telemetry()
+                                               │
+                                               ▼
+                                    peaq Storage Pallet (on-chain)
 ```
 
-### 3. Environmental Telemetry
-```json
-{
-  "type": "Environmental",
-  "temperature_celsius": 22.5,
-  "humidity_percent": 65.0,
-  "pressure_hpa": 1013.25
-}
-```
-
-### 4. Vehicle Telemetry
-```json
-{
-  "type": "Vehicle",
-  "speed_kmh": 85.5,
-  "battery_percent": 78.0,
-  "odometer_km": 12543.2
-}
-```
+---
 
 ## Testing
 
 ```bash
-# Run all tests
+# Run all unit tests
 cargo test
 
-# Run tests with output
+# Show println! / log output
 cargo test -- --nocapture
 
-# Run specific module tests
+# Test a specific module
 cargo test crypto::tests
 cargo test telemetry::tests
+cargo test did::tests
 
-# Run integration tests (requires network connection)
+# Integration tests (requires a live network connection)
 cargo test --test '*' -- --ignored
 ```
 
-## Error Handling
-
-The simulator uses a comprehensive error type system:
-
-- `SimulatorError::Subxt`: Substrate/subxt errors
-- `SimulatorError::Crypto`: Cryptographic operation failures
-- `SimulatorError::Did`: DID-related errors
-- `SimulatorError::Telemetry`: Telemetry generation/signing errors
-- `SimulatorError::Config`: Configuration errors
-- `SimulatorError::Network`: Network connectivity issues
-
-## Performance Considerations
-
-- **Async I/O**: All network operations are non-blocking
-- **Efficient Serialization**: Uses serde for fast JSON encoding
-- **Minimal Allocations**: Reuses buffers where possible
-- **Configurable Intervals**: Adjust telemetry frequency based on needs
+---
 
 ## Security
 
-- **Private Key Management**: Keys are never logged or exposed
-- **Signature Verification**: All packets are self-verified before submission
-- **Secure RNG**: Uses cryptographically secure random number generation
-- **No Hardcoded Secrets**: All sensitive data via environment variables
+- Private keys are **never logged** or written to disk
+- Every telemetry packet is **self-verified** before submission
+- Cryptographically secure RNG (`rand` crate) for key generation
+- All secrets supplied exclusively via environment variables / `.env`
+
+---
 
 ## Roadmap
 
-- [ ] Complete metadata integration with peaq pallets
-- [ ] Add support for batch telemetry submission
-- [ ] Implement DID document updates
-- [ ] Add metrics and monitoring endpoints
-- [ ] Support for multiple device simulation
-- [ ] WebSocket reconnection logic
-- [ ] Persistent storage for device state
+- [ ] Full metadata integration with peaq DID & Storage pallets
+- [ ] Batch telemetry submission
+- [ ] DID document update support
+- [ ] Multi-device simulation (spawn N devices concurrently)
+- [ ] WebSocket auto-reconnect
+- [ ] Prometheus metrics endpoint
+- [ ] Persistent keypair storage
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please ensure:
+Contributions are welcome!
 
-1. All tests pass: `cargo test`
-2. Code is formatted: `cargo fmt`
-3. No clippy warnings: `cargo clippy`
-4. Documentation is updated
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Ensure all checks pass:
+   ```bash
+   cargo fmt --check
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+4. Open a pull request
+
+---
 
 ## License
 
-MIT License - See LICENSE file for details
+MIT — see [LICENSE](LICENSE) for details.
+
+---
 
 ## Resources
 
 - [peaq Network Documentation](https://docs.peaq.network/)
-- [Substrate Documentation](https://docs.substrate.io/)
 - [subxt Documentation](https://docs.rs/subxt/)
+- [Substrate Documentation](https://docs.substrate.io/)
 - [W3C DID Specification](https://www.w3.org/TR/did-core/)
-
-## Support
-
-For issues and questions:
-- Open an issue on GitHub
-- Join the peaq Discord community
-- Check the peaq documentation
-
----

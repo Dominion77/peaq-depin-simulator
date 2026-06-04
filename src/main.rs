@@ -60,7 +60,6 @@ async fn main() -> Result<()> {
     }
 
     // Check if DID exists, register if not
-    // Note: did_exists always returns false, so we rely on registration error handling
     match client.did_exists(&keypair).await {
         Ok(exists) => {
             if !exists {

@@ -2,6 +2,28 @@
 name = "peaq-depin-simulator"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.70"
+
+description = "A production-grade headless DePIN node simulator for the peaq network — generates SR25519 identities, W3C DIDs, and cryptographically-signed IoT telemetry submitted via Substrate extrinsics."
+license = "MIT"
+readme = "README.md"
+
+repository = "https://github.com/Dominion77/peaq-depin-simulator"
+homepage = "https://github.com/Dominion77/peaq-depin-simulator"
+documentation = "https://docs.rs/peaq-depin-simulator"
+
+authors = ["peaq DePIN Simulator Contributors"]
+
+keywords = ["peaq", "depin", "substrate", "iot", "blockchain"]
+categories = ["simulation", "cryptography", "network-programming", "command-line-utilities"]
+
+exclude = [
+    ".env",
+    "peaq_metadata.scale",
+    "*.json",
+    "scripts/",
+    "target/",
+]
 
 [dependencies]
 # Substrate & subxt core

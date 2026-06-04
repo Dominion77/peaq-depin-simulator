@@ -1,11 +1,3 @@
-/// Simple example demonstrating the peaq DePIN simulator
-/// 
-/// This example shows how to:
-/// 1. Generate a device keypair
-/// 2. Create a DID
-/// 3. Generate and sign telemetry
-/// 4. Simulate data submission
-
 use peaq_depin_simulator::{
     crypto::DeviceKeypair,
     did::Did,
@@ -13,15 +5,15 @@ use peaq_depin_simulator::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 peaq DePIN Simulator - Simple Example\n");
+    println!(" peaq DePIN Simulator - Simple Example\n");
 
     // 1. Generate device identity
-    println!("1️⃣  Generating device keypair...");
+    println!("1  Generating device keypair...");
     let keypair = DeviceKeypair::generate()?;
     println!("   Public key: {}", keypair.public_key_hex());
 
     // 2. Create DID
-    println!("\n2️⃣  Creating DID...");
+    println!("\n2  Creating DID...");
     let did = Did::from_public_key(&keypair.public_key_hex())?;
     println!("   DID: {}", did);
     
@@ -31,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", serde_json::to_string_pretty(&did_doc)?);
 
     // 3. Generate telemetry
-    println!("\n3️⃣  Generating telemetry data...");
+    println!("\n  Generating telemetry data...");
     let mut generator = TelemetryGenerator::new("example-device".to_string());
     
     for i in 1..=5 {
@@ -44,14 +36,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         // Verify signature
         let verified = packet.verify(&keypair)?;
-        println!("   Verified: {}", if verified { "✅" } else { "❌" });
+        println!("   Verified: {}", if verified { "verified" } else { "not verified" });
         
         // Serialize
         let bytes = packet.to_bytes()?;
         println!("   Size: {} bytes", bytes.len());
     }
 
-    println!("\n✅ Example completed successfully!");
+    println!("\n Example completed successfully!");
     println!("\nTo run the full simulator:");
     println!("   cargo run --release");
     
